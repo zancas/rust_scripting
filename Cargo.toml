@@ -1,0 +1,3 @@
+[workspace]
+members = ["symlistow"]
+resolver = "2"
