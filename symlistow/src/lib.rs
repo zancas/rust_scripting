@@ -144,15 +144,12 @@ pub fn handle_symlink(
 /// # Returns
 /// * `true` if the binary was successfully verified and added to the collection
 /// * `false` if the binary could not be verified
-pub fn verify_and_push(
-    path: &str,
-    versions: &mut Vec<(String, String)>,
-) -> bool {
+pub fn append_verified_binaries(path: &str, versions: &mut Vec<(String, String)>) -> bool {
     let name = Path::new(path)
         .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or(path);
-    
+
     match verify_binary(path, name) {
         Ok(version) => {
             println!("✓ {}: {}", name, version);
@@ -165,4 +162,3 @@ pub fn verify_and_push(
         }
     }
 }
-
