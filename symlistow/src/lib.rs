@@ -139,21 +139,24 @@ pub fn handle_symlink(
 ///
 /// # Arguments
 /// * `path` - The file path to the binary
-/// * `name` - The name of the binary (for display purposes)
-/// * `versions` - A mutable vector to collect the binary information (name, path, version)
+/// * `versions` - A mutable vector to collect the binary information (path, version)
 ///
 /// # Returns
 /// * `true` if the binary was successfully verified and added to the collection
 /// * `false` if the binary could not be verified
 pub fn verify_and_push(
     path: &str,
-    name: &str,
-    versions: &mut Vec<(String, String, String)>,
+    versions: &mut Vec<(String, String)>,
 ) -> bool {
+    let name = Path::new(path)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or(path);
+    
     match verify_binary(path, name) {
         Ok(version) => {
             println!("✓ {}: {}", name, version);
-            versions.push((name.to_string(), path.to_string(), version));
+            versions.push((path.to_string(), version));
             true
         }
         Err(e) => {
