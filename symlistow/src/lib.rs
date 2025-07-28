@@ -11,14 +11,23 @@ pub enum ExecutableVerificationError {
     #[error("Binary did not execute successfully: {0}")]
     ExecutionError(#[from] std::io::Error),
 }
+#[derive(Debug)]
 pub struct ExecutableBin {
     path: PathBuf,
     version_report: String,
 }
 pub trait Executable: Sized {
-    fn new(candidate: &Path) -> Result<ExecutableBin, ExecutableVerificationError>;
     /// Verifies that a binary exists and can run --version.
     /// Returns Ok with the version string on success, or Err with an error message.
+    fn new(candidate: &Path) -> Result<ExecutableBin, ExecutableVerificationError>
+    where
+        Self: Sized,
+    {
+        Ok(ExecutableBin {
+            path: candidate.to_path_buf(),
+            version_report: <ExecutableBin as Executable>::verify_binary(candidate)?,
+        })
+    }
     fn verify_binary(binary_path: &Path) -> Result<String, ExecutableVerificationError> {
         if !Path::new(binary_path).exists() {
             return Err(ExecutableVerificationError::MissingPath(binary_path.into()));
@@ -41,34 +50,26 @@ pub trait Executable: Sized {
     }
 }
 
-impl Executable for ExecutableBin {
-    fn new(candidate: &Path) -> Result<ExecutableBin, ExecutableVerificationError>
-    where
-        Self: Sized,
-    {
-        Ok(Self {
-            path: candidate.to_path_buf(),
-            version_report: <ExecutableBin as Executable>::verify_binary(candidate)?,
-        })
-    }
-}
+impl Executable for ExecutableBin {}
 #[cfg(test)]
 mod test {
     use super::*;
     #[allow(dead_code)]
     struct MockExecutableBin;
     impl Executable for MockExecutableBin {
-        fn new(candidate: &Path) -> Result<ExecutableBin, ExecutableVerificationError> {
-            let _ = candidate;
-            Ok(ExecutableBin {
-                path: PathBuf::new(),
-                version_report: "test".to_string(),
-            })
+        fn verify_binary(binary_path: &Path) -> Result<String, ExecutableVerificationError> {
+            Err(ExecutableVerificationError::MissingPath(PathBuf::from(
+                binary_path,
+            )))
         }
     }
     #[test]
     fn test_exe_bin_construction() {
-        let _meb = MockExecutableBin::new(&PathBuf::new());
+        if let Err(ExecutableVerificationError::MissingPath(e)) =
+            MockExecutableBin::new(&PathBuf::from("Test"))
+        {
+            assert_eq!(e, PathBuf::from("Test"))
+        };
     }
 }
 //type Executables = Vec<Executable>;
