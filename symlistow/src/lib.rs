@@ -3,7 +3,7 @@ use std::process::{Command, ExitStatus};
 
 /// Err Type for failed verification
 #[derive(Debug, thiserror::Error)]
-enum ExecutableVerificationError {
+pub enum ExecutableVerificationError {
     #[error("Path doesn't exist: {0}")]
     MissingPath(PathBuf),
     #[error("Failed call to --version, got {0}")]
@@ -15,16 +15,8 @@ pub struct ExecutableBin {
     path: PathBuf,
     version_report: String,
 }
-pub trait Executable {
-    fn new(candidate: &Path) -> Result<ExecutableBin, ExecutableVerificationError>
-    where
-        Self: Sized,
-    {
-        Ok(ExecutableBin {
-            path: candidate.to_path_buf(),
-            version_report: <ExecutableBin as Executable>::verify_binary(candidate)?,
-        })
-    }
+pub trait Executable: Sized {
+    fn new(candidate: &Path) -> Result<ExecutableBin, ExecutableVerificationError>;
     /// Verifies that a binary exists and can run --version.
     /// Returns Ok with the version string on success, or Err with an error message.
     fn verify_binary(binary_path: &Path) -> Result<String, ExecutableVerificationError> {
@@ -49,7 +41,30 @@ pub trait Executable {
     }
 }
 
-impl Executable for ExecutableBin {}
+impl Executable for ExecutableBin {
+    fn new(candidate: &Path) -> Result<ExecutableBin, ExecutableVerificationError>
+    where
+        Self: Sized,
+    {
+        Ok(Self {
+            path: candidate.to_path_buf(),
+            version_report: <ExecutableBin as Executable>::verify_binary(candidate)?,
+        })
+    }
+}
+#[cfg(test)]
+mod test {
+    use super::*;
+    struct MockExecutableBin {
+        path: PathBuf,
+        version_report: String,
+    }
+    impl Executable for MockExecutableBin {
+        fn new(candidate: &Path) -> Result<ExecutableBin, ExecutableVerificationError> {
+            todo!()
+        }
+    }
+}
 //type Executables = Vec<Executable>;
 ///// A type to track state transitions in the system
 //struct LinkFlow {
