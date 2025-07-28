@@ -55,14 +55,20 @@ impl Executable for ExecutableBin {
 #[cfg(test)]
 mod test {
     use super::*;
-    struct MockExecutableBin {
-        path: PathBuf,
-        version_report: String,
-    }
+    #[allow(dead_code)]
+    struct MockExecutableBin;
     impl Executable for MockExecutableBin {
         fn new(candidate: &Path) -> Result<ExecutableBin, ExecutableVerificationError> {
-            todo!()
+            let _ = candidate;
+            Ok(ExecutableBin {
+                path: PathBuf::new(),
+                version_report: "test".to_string(),
+            })
         }
+    }
+    #[test]
+    fn test_exe_bin_construction() {
+        let _meb = MockExecutableBin::new(&PathBuf::new());
     }
 }
 //type Executables = Vec<Executable>;
