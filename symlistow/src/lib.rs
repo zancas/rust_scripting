@@ -16,16 +16,13 @@ pub struct ExecutableBin {
     version_report: String,
 }
 pub trait Executable {
-    fn new(candidate: &Path) -> Result<Self, ExecutableVerificationError>
+    fn new(candidate: &Path) -> Result<ExecutableBin, ExecutableVerificationError>
     where
-        Self: Sized;
-}
-
-impl Executable for ExecutableBin {
-    pub fn new(candidate: &Path) -> Result<Self, ExecutableVerificationError> {
-        Ok(Self {
+        Self: Sized,
+    {
+        Ok(ExecutableBin {
             path: candidate.to_path_buf(),
-            version_report: Executable::verify_binary(candidate)?,
+            version_report: <ExecutableBin as Executable>::verify_binary(candidate)?,
         })
     }
     /// Verifies that a binary exists and can run --version.
@@ -51,6 +48,8 @@ impl Executable for ExecutableBin {
         }
     }
 }
+
+impl Executable for ExecutableBin {}
 //type Executables = Vec<Executable>;
 ///// A type to track state transitions in the system
 //struct LinkFlow {
