@@ -6,7 +6,7 @@ use std::process::{Command, ExitStatus};
 
 /// Err Type for failed verification
 #[derive(Debug, thiserror::Error)]
-enum VerificationError {
+enum ExecutableVerificationError {
     #[error("Path doesn't exist: {0}")]
     MissingPath(PathBuf),
     #[error("Failed call to --version, got {0}")]
@@ -14,28 +14,44 @@ enum VerificationError {
     #[error("Binary did not execute successfully: {0}")]
     ExecutionError(#[from] io::Error),
 }
-
-/// Verifies that a binary exists and can run --version.
-/// Returns Ok with the version string on success, or Err with an error message.
-fn verify_binary(binary_path: &Path) -> Result<String, VerificationError> {
-    if !Path::new(binary_path).exists() {
-        return Err(VerificationError::MissingPath(binary_path.into()));
+pub struct Executable {
+    path: PathBuf,
+    version_report: String,
+}
+impl Executable {
+    pub fn new(candidate: &Path) -> Result<Self, ExecutableVerificationError> {
+        Ok(Self {
+            path: candidate.to_path_buf(),
+            version_report: Executable::verify_binary(candidate)?,
+        })
     }
-
-    // Try to run the version command
-    let result = Command::new(binary_path).arg("--version").output();
-
-    match result {
-        Ok(output) => {
-            if output.status.success() {
-                let version = String::from_utf8_lossy(&output.stdout);
-                Ok(version.trim().to_string())
-            } else {
-                Err(VerificationError::VersionCallFail(output.status))
-            }
+    /// Verifies that a binary exists and can run --version.
+    /// Returns Ok with the version string on success, or Err with an error message.
+    fn verify_binary(binary_path: &Path) -> Result<String, ExecutableVerificationError> {
+        if !Path::new(binary_path).exists() {
+            return Err(ExecutableVerificationError::MissingPath(binary_path.into()));
         }
-        Err(e) => Err(VerificationError::ExecutionError(e)),
+
+        // Try to run the version command
+        let result = Command::new(binary_path).arg("--version").output();
+
+        match result {
+            Ok(output) => {
+                if output.status.success() {
+                    let version = String::from_utf8_lossy(&output.stdout);
+                    Ok(version.trim().to_string())
+                } else {
+                    Err(ExecutableVerificationError::VersionCallFail(output.status))
+                }
+            }
+            Err(e) => Err(ExecutableVerificationError::ExecutionError(e)),
+        }
     }
+}
+type Executables = Vec<Executable>;
+/// A type to track state transitions in the system
+struct LinkFlow {
+    executable: Executables,
 }
 
 /// Prompts the user to decide whether to replace an existing binary.
