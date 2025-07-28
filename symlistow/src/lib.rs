@@ -17,7 +17,7 @@ enum VerificationError {
 
 /// Verifies that a binary exists and can run --version.
 /// Returns Ok with the version string on success, or Err with an error message.
-fn verify_binary(binary_path: &str, binary_name: &str) -> Result<String, VerificationError> {
+fn verify_binary(binary_path: &Path) -> Result<String, VerificationError> {
     if !Path::new(binary_path).exists() {
         return Err(VerificationError::MissingPath(binary_path.into()));
     }
@@ -85,10 +85,7 @@ pub fn handle_symlink(
 ) {
     if link_path.exists() {
         // Verify existing symlink/binary
-        match verify_binary(
-            link_path.to_str().unwrap(),
-            &format!("{} (existing)", binary_name),
-        ) {
+        match verify_binary(link_path) {
             Ok(existing_version) => {
                 if existing_version == source_version {
                     println!("✓ {} symlink already exists with same version", binary_name);
@@ -152,16 +149,16 @@ pub fn handle_symlink(
 /// # Returns
 /// * `true` if the binary was successfully verified and added to the collection
 /// * `false` if the binary could not be verified
-pub fn append_verified_binaries(path: &str, versions: &mut Vec<(String, String)>) -> bool {
-    let name = Path::new(path)
+pub fn append_verified_binaries(path: &Path, versions: &mut Vec<(String, String)>) -> bool {
+    let name = path
         .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or(path);
+        .and_then(|n| n.to_str()) // Option<&str>
+        .unwrap_or("no_basename");
 
-    match verify_binary(path, name) {
+    match verify_binary(path) {
         Ok(version) => {
             println!("✓ {}: {}", name, version);
-            versions.push((path.to_string(), version));
+            versions.push((name.to_string(), version));
             true
         }
         Err(e) => {
