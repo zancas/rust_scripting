@@ -1,17 +1,25 @@
 use std::fs;
 use std::io::{self, Write};
 use std::os::unix::fs as unix_fs;
-use std::path::Path;
-use std::process::Command;
+use std::path::{Path, PathBuf};
+use std::process::{Command, ExitStatus};
 
-/// Result of verifying a binary
-type VerifyResult = Result<String, String>;
+/// Err Type for failed verification
+#[derive(Debug, thiserror::Error)]
+enum VerificationError {
+    #[error("Path doesn't exist: {0}")]
+    MissingPath(PathBuf),
+    #[error("Failed call to --version, got {0}")]
+    VersionCallFail(ExitStatus),
+    #[error("Binary did not execute successfully: {0}")]
+    ExecutionError(#[from] io::Error),
+}
 
 /// Verifies that a binary exists and can run --version.
 /// Returns Ok with the version string on success, or Err with an error message.
-fn verify_binary(binary_path: &str, binary_name: &str) -> VerifyResult {
+fn verify_binary(binary_path: &str, binary_name: &str) -> Result<String, VerificationError> {
     if !Path::new(binary_path).exists() {
-        return Err(format!("{} not found at {}", binary_name, binary_path));
+        return Err(VerificationError::MissingPath(binary_path.into()));
     }
 
     // Try to run the version command
@@ -23,10 +31,10 @@ fn verify_binary(binary_path: &str, binary_name: &str) -> VerifyResult {
                 let version = String::from_utf8_lossy(&output.stdout);
                 Ok(version.trim().to_string())
             } else {
-                Err(format!("{} failed to run --version", binary_name))
+                Err(VerificationError::VersionCallFail(output.status))
             }
         }
-        Err(e) => Err(format!("{} failed to execute: {}", binary_name, e)),
+        Err(e) => Err(VerificationError::ExecutionError(e)),
     }
 }
 
